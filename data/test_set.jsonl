@@ -1,0 +1,10 @@
+{"id": "q001", "question": "What government position was held by the woman who portrayed Corliss Archer in the film Kiss and Tell?", "answer": "Chief of Protocol of the United States", "type": "multi-hop"}
+{"id": "q002", "question": "Peter Griffith's granddaughter had her screen debut in what 1999 film?", "answer": "Crazy in Alabama", "type": "multi-hop"}
+{"id": "q003", "question": "how many episodes are in chicago fire season 4?", "answer": "23", "type": "single-hop"}
+{"id": "q004", "question": "What country of origin does House of Cosbys and Bill Cosby have in common?", "answer": "United States", "type": "multi-hop"}
+{"id": "q005", "question": "Which film has the director who died later, The House Of Tears or College Ranga?", "answer": "College Ranga", "type": "multi-hop"}
+{"id": "q006", "question": "Who portrayed Corliss Archer in the film Kiss and Tell?", "answer": "Shirley Temple", "type": "single-hop"}
+{"id": "q007", "question": "Who is the director of film The Stoneman Murders?", "answer": "Manish Gupta", "type": "single-hop"}
+{"id": "q008", "question": "Are both directors of films The Stoneman Murders and Chandralekha (2014 Film) from the same country?", "answer": "Yes", "type": "multi-hop"}
+{"id": "q009", "question": "Who is Peter Griffith's granddaughter?", "answer": "Dakota Johnson", "type": "single-hop"}
+{"id": "q010", "question": "Who directed the 1999 film in which Dakota Johnson made her screen debut?", "answer": "Antonio Banderas", "type": "multi-hop"}
