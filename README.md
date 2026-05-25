@@ -2,7 +2,7 @@
 
 > **教学目标**：通过搭建一个完整的 Multi-Agent RAG 系统，理解"规划-检索-生成"的协作范式，并通过对比实验验证其有效性。
 
-**总课时**：16-20 课时（共 5 个阶段）
+**总课时**：20 课时（共 5 个阶段）
 
 ---
 
@@ -194,7 +194,7 @@ python -c "from src.retriever import LocalEmbeddingProvider; emb = LocalEmbeddin
 
 ## 分阶段实现计划
 
-### Phase 1: 环境和工具库（3 课时）
+### Phase 1: 环境和工具库（3.5 课时）
 
 **目标**：理解项目框架，实现基础工具类
 
@@ -234,7 +234,7 @@ mini-ma-rag-starter/
 - 浏览 `src/state.py`，理解各数据类型的定义（15 分钟）
 - 浏览 `src/config.py`，了解配置项（10 分钟）
 
-#### 1.2 实现 LLM 客户端（1 课时）
+#### 1.2 实现 LLM 客户端（1.5 课时）
 
 **任务**：完成 `src/llm_client.py` 中的 `chat()` 和 `chat_structured()` 方法
 
@@ -359,11 +359,11 @@ python src/retriever.py
 
 ---
 
-### Phase 2: Naive RAG 基线（2.5 课时）
+### Phase 2: Naive RAG 基线（3 课时）
 
 **目标**：实现一个简单的 RAG 基线，作为对比参考
 
-#### 2.1 理论讲解（0.5 课时）
+#### 2.1 理论讲解（1 课时）
 
 Naive RAG 的流程很简单：
 
@@ -715,7 +715,7 @@ QA_AGENT_HUMAN_MESSAGE = """
 python src/rag_agent.py
 ```
 
-#### 3.4 Summarizer 汇总器（1 课时）
+#### 3.4 Summarizer 汇总器（1.5 课时）
 
 **任务**：完成 `src/summarizer.py` 中的 `Summarizer` 类
 
@@ -827,11 +827,11 @@ python src/executor.py
 
 ---
 
-### Phase 4: LangGraph 工作流和主入口（2.5 课时）
+### Phase 4: LangGraph 工作流和主入口（3 课时）
 
 **目标**：将各组件整合为完整的工作流，支持命令行执行
 
-#### 4.1 LangGraph 工作流（1 课时）
+#### 4.1 LangGraph 工作流（1.5 课时）
 
 **任务**：完成 `graph/workflow.py` 中的 `AgentWorkflow` 类
 
@@ -1140,7 +1140,7 @@ print(f"准确率: {stats['accuracy']:.1%}")
 - 测试集: test_set.jsonl (10 道题，包含简单事实题和多跳推理题)
 - 评估指标: 准确率、F1 分数、推理过程完整性
 - LLM 模型: [你使用的模型]
-- Embedding 模型: all-MiniLM-L6-v2
+- Embedding 模型
 
 ## 3. 实验结果
 
@@ -1381,7 +1381,7 @@ def _format_memory(self, past_experiences: Optional[List[PlanExecState]]) -> str
 
 ## 总结
 
-本实验通过 5 个阶段（共 16-20 课时）引导学生实现一个完整的多智能体 RAG 系统。核心学习成果包括：
+本实验通过 5 个阶段（共 20 课时）引导学生实现一个完整的多智能体 RAG 系统。核心学习成果包括：
 
 1. **架构思想**：理解如何将复杂任务分解为协作的智能体
 2. **工程能力**：掌握 LLM API、向量检索、工作流编排等技术
