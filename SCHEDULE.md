@@ -378,10 +378,6 @@ python run.py --mode naive --start 0 --end 2 --output /tmp/test.jsonl
 - LLM Agent 设计模式：https://lilianweng.github.io/posts/2023-06-23-agent/
 - Prompt Engineering 指南：https://platform.openai.com/docs/guides/prompt-engineering
 
-### 可选
-- 向量检索论文：https://arxiv.org/abs/2401.04245
-- 多 Agent 协作：https://arxiv.org/abs/2308.03762
-
 ---
 
 ## 答辩评分细则（总分 100）
@@ -418,7 +414,7 @@ python run.py --mode naive --start 0 --end 2 --output /tmp/test.jsonl
 
 ---
 
-## 教师备注
+<!-- ## 教师备注
 
 ### 课前准备
 - [ ] 准备示例 API Key（或购买相关 API 额度）
@@ -434,5 +430,5 @@ python run.py --mode naive --start 0 --end 2 --output /tmp/test.jsonl
 ### 课后
 - [ ] 收集学生的代码并进行审查
 - [ ] 记录进度，调整后续课程安排
-- [ ] 为进度落后的学生提供补课机会
+- [ ] 为进度落后的学生提供补课机会 -->
 
