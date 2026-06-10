@@ -217,16 +217,16 @@ mini-ma-rag-starter/
 │   └── executor.py        # 执行器（协调各 Agent） ← 【需要完成】
 ├── graph/
 │   ├── __init__.py
-│   └── workflow.py        # LangGraph 工作流定义 ← 【需要完成】
+│   └── workflow.py        # LangGraph 工作流定义 ✓ 完整
 ├── baselines/
 │   └── naive_rag.py       # 朴素 RAG 基线 ← 【需要完成】
 ├── data/
 │   ├── build_corpus.py    # 语料库构建脚本
-│   ├── corpus.jsonl       # 文本语料库
+│   ├── corpus.jsonl       # 文本语料库（需运行 build_corpus.py 生成）
 │   └── test_set.jsonl     # 测试集（QA 对）
 ├── eval/
-│   └── evaluate.py        # 评估脚本 ← 【需要完成】
-└── run.py                 # 主入口脚本 ← 【需要完成】
+│   └── evaluate.py        # 评估脚本 ✓ 完整
+└── run.py                 # 主入口脚本 ✓ 完整
 ```
 
 **自学内容**：
@@ -1046,47 +1046,10 @@ python run.py --mode agent --input data/test_set.jsonl --output results_hard.jso
 
 **实现要点**：
 
-```python
-class LLMEvaluator:
-    def __init__(self, client: Optional[LLMClient] = None):
-        self.client = client or get_default_client()
-
-    def evaluate_answer(self, question: str, predicted: str, ground_truth: str) -> dict:
-        """
-        使用 LLM 评估生成答案的正确性。
-        
-        Returns:
-            {"correct": True/False, "reasoning": "..."}
-        """
-        # TODO:
-        # 1. 构造评估 prompt
-        # 2. 调用 self.client.chat_structured() 进行评估
-        # 3. 返回评估结果
-        pass
-
-def evaluate_results(results_file: str, output_file: str = None) -> dict:
-    """
-    评估整个结果文件。
-    
-    返回:
-        {
-            "total": 10,
-            "correct": 9,
-            "accuracy": 0.9,
-            "details": [
-                {"id": "q001", "predicted": "...", "correct": True},
-                ...
-            ]
-        }
-    """
-    # TODO:
-    # 1. 读取 results_file 的所有行
-    # 2. 对每行调用 evaluate_answer()
-    # 3. 汇总计算统计指标
-    # 4. 保存到 output_file（可选）
-    # 5. 返回统计结果
-    pass
-```
+`eval/evaluate.py` 已提供完整的 `Evaluator` 类，支持两种评估方式：
+- `_llm_judge()`: 使用 LLM-as-Judge 判断答案正确性
+- `_exact_match()`: 精确匹配（归一化字符串比较，LLM 不可用时的 fallback）
+- `evaluate_file()`: 主入口，读取结果文件 → 逐题评估 → 输出统计
 
 **使用示例**：
 
@@ -1096,11 +1059,6 @@ python eval/evaluate.py results_agent.jsonl --output eval_agent.json
 
 # 评估 Naive RAG 结果
 python eval/evaluate.py results_naive.jsonl --output eval_naive.json
-
-# Python 脚本中调用
-from eval.evaluate import evaluate_results
-stats = evaluate_results("results_agent.jsonl")
-print(f"准确率: {stats['accuracy']:.1%}")
 ```
 
 #### 5.2 对比实验（1.5 课时）

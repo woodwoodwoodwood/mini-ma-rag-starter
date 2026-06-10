@@ -162,7 +162,7 @@ python src/planner.py
 **教学内容**：
 - 讲解查询优化的概念（10 分钟）
 - 讲解如何利用历史信息优化查询（10 分钟）
-- 学生实现 `StepDefiner.define_step()` 方法（40 分钟）
+- 学生实现 `StepDefiner.define()` 方法（40 分钟）
 - 代码审查（10 分钟）
 
 **关键代码位置**：
@@ -180,8 +180,8 @@ python src/planner.py
 **教学内容**：
 - 讲解问答代理的设计（10 分钟）
 - 讲解置信度评分的意义（10 分钟）
-- 讲解 `StepOutput` 数据格式（5 分钟）
-- 学生实现 `RAGAgent.answer_step()` 方法（45 分钟）
+- 讲解 `QAAnswerFormat` 数据格式（5 分钟）
+- 学生实现 `RAGAgent.run()` 方法（45 分钟）
 
 **关键代码位置**：
 - `src/rag_agent.py` 中的 `RAGAgent` 类
@@ -197,7 +197,7 @@ python src/planner.py
 
 **教学内容**：
 - 讲解多步输出的整合方法（10 分钟）
-- 讲解 `PlanSummary` 数据格式（5 分钟）
+- 讲解 `PlanSummaryFormat` 数据格式（5 分钟）
 - 学生实现 `Summarizer.summarize()` 方法（35 分钟）
 - 测试（10 分钟）
 

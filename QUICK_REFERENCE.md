@@ -29,22 +29,29 @@ python -c "from src.llm_client import LLMClient; LLMClient().chat('sys', 'hello'
 
 | 文件 | 类/函数 | 任务描述 | 难度 |
 |------|--------|--------|------|
-| `src/llm_client.py` | `LLMClient.chat()` | 普通对话生成 | ⭐ |
-| `src/llm_client.py` | `LLMClient.chat_structured()` | 结构化输出 | ⭐⭐ |
-| `src/retriever.py` | `Retriever.load_corpus()` | 加载语料库 | ⭐ |
-| `src/retriever.py` | `Retriever.build_index()` | 构建向量索引 | ⭐ |
-| `src/retriever.py` | `Retriever.search()` | 向量搜索 | ⭐ |
-| `baselines/naive_rag.py` | `NaiveRAG.answer()` | 简单 RAG 回答 | ⭐ |
 | `src/planner.py` | `Planner.plan()` | 问题分解规划 | ⭐⭐ |
-| `src/step_definer.py` | `StepDefiner.define_step()` | 查询优化 | ⭐⭐ |
-| `src/rag_agent.py` | `RAGAgent.answer_step()` | 单步问答 | ⭐⭐ |
+| `src/planner.py` | `Planner._format_memory()` | 格式化历史经验 | ⭐ |
+| `src/step_definer.py` | `StepDefiner.define()` | 步骤查询优化 | ⭐⭐ |
+| `src/step_definer.py` | `StepDefiner._format_step_outputs()` | 格式化步骤历史 | ⭐ |
+| `src/rag_agent.py` | `RAGAgent.run()` | 完整 RAG 流程 | ⭐⭐ |
+| `src/rag_agent.py` | `RAGAgent._extract()` | 文档信息抽取 | ⭐ |
+| `src/rag_agent.py` | `RAGAgent._generate()` | 基于 notes 生成答案 | ⭐ |
 | `src/summarizer.py` | `Summarizer.summarize()` | 结果汇总 | ⭐ |
+| `src/summarizer.py` | `Summarizer._format_memory()` | 格式化步骤输出 | ⭐ |
+| `src/executor.py` | `Aggregator.run()` | 聚合类步骤处理 | ⭐ |
 | `src/executor.py` | `PlanExecutor.execute()` | 执行协调 | ⭐⭐ |
-| `graph/workflow.py` | `AgentWorkflow._build_graph()` | 工作流定义 | ⭐⭐ |
-| `graph/workflow.py` | `AgentWorkflow.run()` | 工作流执行 | ⭐ |
-| `run.py` | `run_agent_rag()` | Agent-RAG 批处理 | ⭐ |
-| `run.py` | `run_naive_rag()` | Naive RAG 批处理 | ⭐ |
-| `eval/evaluate.py` | `evaluate_results()` | 自动评估 | ⭐⭐ |
+| `baselines/naive_rag.py` | `NaiveRAG.answer()` | 简单 RAG 回答 | ⭐ |
+| `baselines/naive_rag.py` | `run_naive_rag_on_dataset()` | Naive RAG 批处理 | ⭐ |
+
+### ✅ 已完成模块（可直接使用）
+
+| 文件 | 说明 |
+|------|------|
+| `src/llm_client.py` | LLM API 客户端（chat + 结构化输出 + 重试） |
+| `src/retriever.py` | 向量检索（SBERT + FAISS + 暴力搜索） |
+| `graph/workflow.py` | LangGraph 工作流编排（AgentWorkflow） |
+| `run.py` | 主入口脚本（agent / naive 模式） |
+| `eval/evaluate.py` | 评估脚本（LLM-as-Judge + 精确匹配） |
 
 ### 📝 参考文件（已完成，可参考）
 
@@ -53,7 +60,7 @@ python -c "from src.llm_client import LLMClient; LLMClient().chat('sys', 'hello'
 | `src/config.py` | 全局配置 |
 | `src/state.py` | 数据类型定义 |
 | `src/prompts.py` | Prompt 模板 |
-| `data/corpus.jsonl` | 文本语料库 |
+| `data/corpus.jsonl` | 文本语料库（需运行 `python data/build_corpus.py` 生成） |
 | `data/test_set.jsonl` | 测试集 |
 | `.env.sample` | 环境变量示例 |
 
@@ -71,6 +78,7 @@ embeddings = np.array([[0.1, 0.2, ..., 0.384]])
 ### 计划格式（PlanFormat）
 ```python
 {
+    "analysis": "Think step-by-step...",
     "step": [
         "Who is Shirley Temple?",
         "What government positions did she hold?",
@@ -79,20 +87,21 @@ embeddings = np.array([[0.1, 0.2, ..., 0.384]])
 }
 ```
 
-### 步骤输出格式（StepOutput）
+### 步骤输出格式（QAAnswerFormat）
 ```python
 {
+    "analysis": "思考过程...",
     "answer": "Shirley Temple served as Chief of Protocol from 1976-1977.",
     "success": "Yes",  # "Yes" 或 "No"
     "rating": 9        # 0-10 的置信度评分
 }
 ```
 
-### 汇总格式（PlanSummary）
+### 汇总格式（PlanSummaryFormat）
 ```python
 {
-    "answer": "Shirley Temple served as Chief of Protocol of the United States from 1976-1977.",
     "output": "Successful",  # "Successful" 或 "Unsuccessful"
+    "answer": "Shirley Temple served as Chief of Protocol of the United States from 1976-1977.",
     "score": 9              # 0-10 的质量评分
 }
 ```
@@ -163,7 +172,7 @@ python run.py --mode agent --output results_agent.jsonl
 python run.py --mode agent --start 0 --end 5 --output test_results.jsonl
 
 # 使用自定义测试集
-python run.py --mode agent --input data/test_set_hard.jsonl --output results_hard.jsonl
+python run.py --mode agent --input data/test_set.jsonl --output results_hard.jsonl
 
 # 评估结果
 python eval/evaluate.py results_agent.jsonl --output eval_agent.json
