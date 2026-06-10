@@ -523,6 +523,7 @@ from pydantic import BaseModel, Field
 
 class PlanFormat(BaseModel):
     """计划的数据格式"""
+    analysis: str = Field(description="对问题的分析，Think step-by-step")
     step: List[str] = Field(description="按顺序执行的步骤列表")
 
 PLANNER_SYSTEM_MESSAGE = """
@@ -575,33 +576,34 @@ class StepDefiner:
     def __init__(self, client: Optional[LLMClient] = None):
         self.client = client or get_default_client()
 
-    def define_step(
+    def define(
         self,
-        original_question: str,
-        step: str,
-        previous_answers: List[str] = None,
-    ) -> str:
+        plan: List[str],
+        current_step_index: int,
+        step_outputs: List[QAAnswerFormat],
+    ) -> StepTaskFormat:
         """
-        为当前步骤生成最优查询字符串。
-        
+        为当前步骤生成最优查询。
+
         Args:
-            original_question: 原始用户问题
-            step: 当前执行步骤（来自 Planner）
-            previous_answers: 之前步骤的回答列表
-        
+            plan: 完整计划列表
+            current_step_index: 当前执行到第几步（从 0 开始）
+            step_outputs: 之前各步骤的 QAAnswerFormat 结果
+
         Returns:
-            优化后的查询字符串，用于传给检索器
+            StepTaskFormat: 包含 type (question-answering/aggregate) 和 task
         """
         # TODO:
-        # 1. 调用 self._format_history(previous_answers) 生成 history 字符串
-        # 2. 使用 STEP_DEFINER_HUMAN_MESSAGE 生成 user_message
-        # 3. 调用 self.client.chat() 得到查询字符串
-        # 4. 返回查询
+        # 1. 获取当前步骤文本 plan[current_step_index]
+        # 2. 调用 self._format_step_outputs(plan, step_outputs) 生成记忆
+        # 3. 使用 STEP_DEFINER_HUMAN_MESSAGE 生成 user_message
+        # 4. 调用 self.client.chat_structured() + StepTaskFormat
+        # 5. 返回 result
         pass
 
-    def _format_history(self, answers: List[str]) -> str:
-        """将之前的答案格式化为历史记录"""
-        # TODO: 实现格式化逻辑，如果为空返回 "empty"
+    def _format_step_outputs(self, plan: List[str], step_outputs: List[QAAnswerFormat]) -> str:
+        """将之前的步骤答案格式化为记忆文本"""
+        # TODO: 实现格式化逻辑，如果为空返回 "None"
         pass
 ```
 
@@ -651,29 +653,28 @@ class RAGAgent:
         self.retriever = retriever
         self.client = client or get_default_client()
 
-    def answer_step(
-        self,
-        question: str,
-        step_query: str,
-        top_k: int = 3,
-    ) -> StepOutput:
+    def run(self, question: str) -> RagState:
         """
-        回答单个步骤。
-        
+        执行完整的 RAG 流程：检索 → 抽取 → 生成。
+
         Returns:
-            StepOutput: {
-                "answer": str,           # 步骤的答案
-                "success": "Yes"/"No",   # 是否成功回答
-                "rating": int,           # 置信度评分 (0-10)
-                "doc_ids": List[str]     # 使用的文档 ID
-            }
+            RagState: 包含 question, documents, doc_ids, notes, final_raw_answer
         """
         # TODO:
-        # 1. 调用 self.retriever.search(step_query, top_k) 检索文档
-        # 2. 拼接为 context
-        # 3. 使用 QA_AGENT_SYSTEM_MESSAGE 和 QA_AGENT_HUMAN_MESSAGE 生成 prompt
-        # 4. 调用 self.client.chat_structured() 得到 StepOutput
-        # 5. 返回结果
+        # 1. 调用 self.retriever.search(question) 检索 Top-K 文档
+        # 2. 对每篇文档调用 self._extract(doc, question) 抽取 notes
+        # 3. 调用 self._generate(question, notes, doc_ids) 生成答案
+        # 4. 组装并返回 RagState
+        pass
+
+    def _extract(self, passage: str, question: str) -> str:
+        """从单篇文档中抽取与问题相关的 notes"""
+        # TODO: 调用 self.client.chat_structured() + ExtractResultFormat
+        pass
+
+    def _generate(self, question: str, notes: List[str], doc_ids: List[str]) -> QAAnswerFormat:
+        """基于抽取的 notes 生成最终答案"""
+        # TODO: 调用 self.client.chat_structured() + QAAnswerFormat
         pass
 ```
 
@@ -682,13 +683,14 @@ class RAGAgent:
 ```python
 from pydantic import BaseModel, Field
 
-class StepOutput(BaseModel):
-    """步骤输出格式"""
-    answer: str = Field(description="对当前步骤的回答")
+class QAAnswerFormat(BaseModel):
+    """QA Agent 的输出格式"""
+    analysis: str = Field(description="对问题和证据的思考过程")
+    answer: str = Field(description="简洁的答案")
     success: str = Field(description="是否成功回答，Yes/No")
-    rating: int = Field(description="回答的置信度，0-10")
+    rating: int = Field(default=0, description="置信度评分 0-10")
 
-QA_AGENT_SYSTEM_MESSAGE = """
+QA_SYSTEM_MESSAGE = """
 你是一个精准的问答助手。你的任务是基于给定的文档回答问题。
 
 【回答要求】
@@ -698,7 +700,7 @@ QA_AGENT_SYSTEM_MESSAGE = """
 4. success 必须是 "Yes" 或 "No"
 """
 
-QA_AGENT_HUMAN_MESSAGE = """
+QA_HUMAN_MESSAGE = """
 【文档】
 {context}
 
@@ -734,33 +736,38 @@ class Summarizer:
     def summarize(
         self,
         original_question: str,
-        step_outputs: List[StepOutput],
-    ) -> PlanSummary:
+        plan: List[str],
+        step_outputs: List[QAAnswerFormat],
+    ) -> PlanSummaryFormat:
         """
         汇总步骤输出，生成最终答案。
-        
+
         Returns:
-            PlanSummary: {
-                "answer": str,      # 最终答案
+            PlanSummaryFormat: {
                 "output": "Successful"/"Unsuccessful",
+                "answer": str,      # 最终答案
                 "score": int,       # 0-10 的质量评分
             }
         """
         # TODO:
-        # 1. 调用 self._format_steps(step_outputs) 生成步骤摘要
+        # 1. 将 plan 格式化为字符串，调用 self._format_memory(plan, step_outputs) 生成记忆
         # 2. 使用 SUMMARIZER_SYSTEM_MESSAGE 和 SUMMARIZER_HUMAN_MESSAGE
-        # 3. 调用 self.client.chat_structured() 得到 PlanSummary
+        # 3. 调用 self.client.chat_structured() 得到 PlanSummaryFormat
         # 4. 返回结果
+        pass
+
+    def _format_memory(self, plan: List[str], step_outputs: List[QAAnswerFormat]) -> str:
+        """将步骤输出格式化为记忆文本"""
         pass
 ```
 
 **参考 Prompt**：
 
 ```python
-class PlanSummary(BaseModel):
+class PlanSummaryFormat(BaseModel):
     """计划汇总格式"""
-    answer: str = Field(description="最终答案")
     output: str = Field(description="执行状态，Successful 或 Unsuccessful")
+    answer: str = Field(description="最终答案，Unsuccessful 时为 N/A")
     score: int = Field(description="答案质量评分，0-10")
 
 SUMMARIZER_SYSTEM_MESSAGE = """
@@ -791,31 +798,37 @@ SUMMARIZER_HUMAN_MESSAGE = """
 **实现要点**：
 
 ```python
-class PlanExecutor:
-    def __init__(self, rag_agent: RAGAgent):
-        self.rag_agent = rag_agent
-        self.step_definer = StepDefiner()
-        self.summarizer = Summarizer()
+class Aggregator:
+    """处理 type='aggregate' 的步骤，无需检索，仅基于历史结果推理"""
+    def __init__(self, client=None): ...
+    def run(self, query: str, memory: List[QAAnswerFormat]) -> QAAnswerFormat: ...
 
-    def execute(self, question: str, plan: List[str]) -> dict:
+class PlanExecutor:
+    def __init__(self, rag_agent: RAGAgent,
+                 step_definer: StepDefiner = None,
+                 summarizer: Summarizer = None):
+        self.rag_agent = rag_agent
+        self.step_definer = step_definer or StepDefiner()
+        self.summarizer = summarizer or Summarizer()
+        self.aggregator = Aggregator()
+
+    def execute(self, question: str, plan: List[str]) -> PlanExecState:
         """
-        执行整个计划。
-        
+        执行整个计划，返回完整状态。
+
+        核心循环:
+          for step in plan:
+            task = step_definer.define(plan, idx, step_outputs)
+            if task.type == 'question-answering':
+                result = rag_agent.run(task.task)
+            else:
+                result = aggregator.run(task.task, step_outputs)
+            step_outputs.append(result)
+          summary = summarizer.summarize(question, plan, step_outputs)
+
         Returns:
-            {
-                "plan": plan,
-                "step_output": [StepOutput, ...],
-                "plan_summary": PlanSummary,
-            }
+            PlanExecState: 包含 step_question, step_output, plan_summary, stop 等
         """
-        # TODO:
-        # 1. 遍历 plan 中的每个步骤
-        # 2. 对于每个步骤：
-        #    a. 调用 self.step_definer.define_step() 生成查询
-        #    b. 调用 self.rag_agent.answer_step() 得到答案
-        #    c. 记录 StepOutput
-        # 3. 调用 self.summarizer.summarize() 生成最终答案
-        # 4. 返回结果字典
         pass
 ```
 
@@ -1012,7 +1025,7 @@ python run.py --mode naive --output results_naive.jsonl
 python run.py --mode agent --start 0 --end 5 --output results_sample.jsonl
 
 # 使用自定义测试集
-python run.py --mode agent --input data/test_set_hard.jsonl --output results_hard.jsonl
+python run.py --mode agent --input data/test_set.jsonl --output results_hard.jsonl
 ```
 
 ---
@@ -1304,36 +1317,37 @@ MODEL_NAME=deepseek-chat
 
 ## 附录 A: 项目文件清单
 
-```
-mini-ma-rag-starter/
+```mini-ma-rag-starter/
 ├── src/
 │   ├── config.py              ✓ 完整
-│   ├── llm_client.py          ✓ 需要完成 chat() 和 chat_structured()
-│   ├── retriever.py           ✓ 需要完成 load_corpus() 等方法
+│   ├── llm_client.py          ✓ 完整
+│   ├── retriever.py           ✓ 完整
 │   ├── state.py               ✓ 完整
 │   ├── prompts.py             ✓ 完整
-│   ├── planner.py             ✗ 需要完成 Planner.plan()
-│   ├── step_definer.py        ✗ 需要完成 StepDefiner.define_step()
-│   ├── rag_agent.py           ✗ 需要完成 RAGAgent.answer_step()
-│   ├── summarizer.py          ✗ 需要完成 Summarizer.summarize()
-│   └── executor.py            ✗ 需要完成 PlanExecutor.execute()
+│   ├── planner.py             ✗ 需要完成 Planner.plan() 和 _format_memory()
+│   ├── step_definer.py        ✗ 需要完成 StepDefiner.define() 和 _format_step_outputs()
+│   ├── rag_agent.py           ✗ 需要完成 RAGAgent.run() 和 _extract() / _generate()
+│   ├── summarizer.py          ✗ 需要完成 Summarizer.summarize() 和 _format_memory()
+│   └── executor.py            ✗ 需要完成 Aggregator.run() 和 PlanExecutor.execute()
 ├── graph/
 │   ├── __init__.py            ✓ 完整
-│   └── workflow.py            ✗ 需要完成 AgentWorkflow
+│   └── workflow.py            ✓ 完整（AgentWorkflow 编排 Planner + PlanExecutor）
 ├── baselines/
 │   ├── __init__.py            ✓ 完整
-│   └── naive_rag.py           ✗ 需要完成 NaiveRAG.answer()
+│   └── naive_rag.py           ✗ 需要完成 NaiveRAG.answer() 和 run_naive_rag_on_dataset()
 ├── eval/
 │   ├── __init__.py            ✓ 完整
-│   └── evaluate.py            ✗ 需要完成评估脚本
+│   └── evaluate.py            ✓ 完整（Evaluator 类 + CLI）
 ├── data/
 │   ├── build_corpus.py        ✓ 完整
-│   ├── corpus.jsonl           ✓ 完整
+│   ├── corpus.jsonl           ⚠ 需运行 `python data/build_corpus.py` 生成
 │   └── test_set.jsonl         ✓ 完整
 ├── .env.sample                ✓ 完整
 ├── requirements.txt           ✓ 完整
-└── run.py                     ✗ 需要完成 run_agent_rag() 和 run_naive_rag()
-```
+├── run.py                     ✓ 完整（agent / naive 模式，CLI 参数完整）
+├── QUICK_REFERENCE.md         快速参考指南
+├── SCHEDULE.md                课时分配和评分标准
+└── README.md                  本文件```
 
 ---
 
